@@ -97,11 +97,17 @@ export default function ClientDashboard() {
         .card h2 { font-family: 'Anton', sans-serif; text-transform: uppercase; font-size: 18px; margin: 0 0 20px; letter-spacing: 0.02em; }
         .empty-state { color: var(--chalk-dim); font-size: 14px; }
 
-        .program-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 14px 0; border-top: 1px solid var(--line); }
-        .program-row:first-of-type { border-top: none; }
-        .program-row .lift { font-weight: 600; }
-        .program-row .sets { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--blood-bright); }
-        .program-row .note { grid-column: 1 / -1; font-size: 12px; color: var(--chalk-dim); margin-top: -4px; }
+        .sheet-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 4px; }
+        .sheet { border-collapse: collapse; width: 100%; min-width: 600px; }
+        .sheet th {
+          background: var(--panel-2); color: var(--chalk-dim);
+          font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+          text-align: left; padding: 10px 8px; border: 1px solid var(--line); white-space: nowrap;
+        }
+        .sheet td { border: 1px solid var(--line); padding: 9px 8px; font-size: 13px; }
+        .sheet td.col-lift { font-weight: 600; }
+        .sheet td.col-day, .sheet td.col-sets, .sheet td.col-reps, .sheet td.col-weight, .sheet td.col-rpe { text-align: center; font-family: 'JetBrains Mono', monospace; color: var(--blood-bright); }
+        .sheet td.col-notes { color: var(--chalk-dim); }
 
         .upload-box {
           border: 1.5px dashed var(--line); border-radius: 6px; padding: 26px; text-align: center;
@@ -149,13 +155,36 @@ export default function ClientDashboard() {
               {!programLoading && !program && (
                 <div className="empty-state">No program assigned yet — your coach will load one in soon.</div>
               )}
-              {!programLoading && program?.exercises?.map((p, i) => (
-                <div className="program-row" key={i}>
-                  <div className="lift">{p.lift}</div>
-                  <div className="sets mono">{p.sets}</div>
-                  {p.note && <div className="note">{p.note}</div>}
+              {!programLoading && program?.rows?.length > 0 && (
+                <div className="sheet-wrap">
+                  <table className="sheet">
+                    <thead>
+                      <tr>
+                        <th className="col-day">Day</th>
+                        <th className="col-lift">Exercise</th>
+                        <th className="col-sets">Sets</th>
+                        <th className="col-reps">Reps</th>
+                        <th className="col-weight">Weight</th>
+                        <th className="col-rpe">RPE</th>
+                        <th className="col-notes">Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {program.rows.map((row, i) => (
+                        <tr key={i}>
+                          <td className="col-day">{row.day || "—"}</td>
+                          <td className="col-lift">{row.lift}</td>
+                          <td className="col-sets">{row.sets || "—"}</td>
+                          <td className="col-reps">{row.reps || "—"}</td>
+                          <td className="col-weight">{row.weight || "—"}</td>
+                          <td className="col-rpe">{row.rpe || "—"}</td>
+                          <td className="col-notes">{row.notes || ""}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              ))}
+              )}
             </div>
 
             {/* UPLOAD */}
