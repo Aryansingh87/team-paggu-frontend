@@ -7,6 +7,10 @@ import MembershipsPage from "./pages/MembershipsPage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import ClientDashboard from "./pages/ClientDashboard.jsx";
 import CoachDashboard from "./pages/CoachDashboard.jsx";
+import TermsPage from "./pages/TermsPage.jsx";
+import PrivacyPage from "./pages/PrivacyPage.jsx";
+import RefundPolicyPage from "./pages/RefundPolicyPage.jsx";
+import ContactPage from "./pages/ContactPage.jsx";
 
 export default function App() {
   return (
@@ -16,6 +20,10 @@ export default function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/memberships" element={<MembershipsPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/refund-policy" element={<RefundPolicyPage />} />
+          <Route path="/contact" element={<ContactPage />} />
           <Route
             path="/dashboard"
             element={
