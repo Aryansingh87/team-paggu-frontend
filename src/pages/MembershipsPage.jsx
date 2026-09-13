@@ -5,8 +5,6 @@ import Footer from "../components/Footer.jsx";
 import api from "../lib/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 
-// Local copy of tier display info (features/description are cosmetic and
-// safe to hardcode; price comes from the backend as the source of truth).
 const tierMeta = {
   STARTER: { plateSize: "small" },
   COMPETITOR: { plateSize: "medium", featured: true },
@@ -16,7 +14,7 @@ const tierMeta = {
 const faqs = [
   {
     q: "How does payment work?",
-    a: "Memberships renew monthly and are billed through Razorpay (test mode during development). You can cancel anytime — no lock-in.",
+    a: "Memberships renew monthly and are billed through Razorpay. You can cancel anytime — no lock-in.",
   },
   {
     q: "Can I switch plans later?",
@@ -34,16 +32,21 @@ const faqs = [
 
 export default function MembershipsPage() {
   const [plans, setPlans] = useState([]);
-  const [loadingPlan, setLoadingPlan] = useState(null); // which plan key is mid-checkout
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [loadingPlan, setLoadingPlan] = useState(null);
   const [payError, setPayError] = useState("");
   const { user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
+    setLoading(true);
+    setLoadError(false);
     api
       .get("/memberships")
       .then(({ data }) => setPlans(data.plans))
-      .catch(() => setPlans([]));
+      .catch(() => setLoadError(true))
+      .finally(() => setLoading(false));
   }, []);
 
   const handleChoose = async (plan) => {
@@ -67,7 +70,7 @@ export default function MembershipsPage() {
         key: data.keyId,
         amount: data.order.amount,
         currency: data.order.currency,
-        name: "Team Paggu",
+        name: "TP-IRONCORE-POWERLIFTING",
         description: `${plan.name} Membership`,
         order_id: data.order.id,
         handler: async (response) => {
@@ -124,6 +127,17 @@ export default function MembershipsPage() {
 
         .pay-error { max-width: 760px; margin: 0 auto 24px; background: rgba(196,36,27,0.12); border: 1px solid var(--blood); color: var(--chalk); font-size: 13px; padding: 12px 16px; border-radius: 4px; text-align: center; }
 
+        /* SKELETON LOADING STATE */
+        .skeleton-card { background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 30px 26px; }
+        .skeleton-block { background: var(--panel-2); border-radius: 3px; animation: pulse 1.4s ease-in-out infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+        .skeleton-plate { width: 50px; height: 50px; border-radius: 50%; margin-bottom: 18px; }
+        .skeleton-line { height: 14px; margin-bottom: 10px; }
+        .skeleton-line.w-60 { width: 60%; }
+        .skeleton-line.w-90 { width: 90%; }
+        .skeleton-line.w-40 { width: 40%; height: 28px; margin: 16px 0; }
+        .skeleton-loading-note { text-align: center; color: var(--chalk-dim); font-size: 13px; margin-top: 20px; }
+
         .faq-list { border-top: 1px solid var(--line); max-width: 760px; }
         .faq-item { padding: 24px 0; border-bottom: 1px solid var(--line); }
         .faq-item h4 { margin: 0 0 8px; font-size: 16px; }
@@ -148,40 +162,64 @@ export default function MembershipsPage() {
       <section className="pf-section">
         <div className="wrap">
           {payError && <div className="pay-error">{payError}</div>}
-          <div className="tiers-grid">
-            {plans.map((plan) => {
-              const meta = tierMeta[plan.key] || {};
-              return (
-                <div className={`tier-card ${meta.featured ? "featured" : ""}`} key={plan.key}>
-                  {meta.featured && <div className="featured-badge mono">MOST LOADED</div>}
-                  <div className={`plate ${meta.plateSize || "small"}`} />
-                  <div className="tier-name">{plan.name?.toUpperCase()}</div>
-                  <div className="tier-desc">{plan.description}</div>
-                  <div className="tier-price mono">
-                    ₹{plan.price}
-                    <span>/{plan.period}</span>
+
+          {loading && (
+            <>
+              <div className="tiers-grid">
+                {[1, 2, 3].map((i) => (
+                  <div className="skeleton-card" key={i}>
+                    <div className="skeleton-block skeleton-plate" />
+                    <div className="skeleton-block skeleton-line w-60" />
+                    <div className="skeleton-block skeleton-line w-90" />
+                    <div className="skeleton-block skeleton-line w-40" />
+                    <div className="skeleton-block skeleton-line w-90" />
+                    <div className="skeleton-block skeleton-line w-90" />
+                    <div className="skeleton-block skeleton-line w-60" />
                   </div>
-                  <ul className="tier-features">
-                    {plan.features?.map((f) => (
-                      <li key={f}>{f}</li>
-                    ))}
-                  </ul>
-                  <button
-                    className={`btn btn-block ${meta.featured ? "btn-primary" : "btn-ghost"}`}
-                    onClick={() => handleChoose(plan)}
-                    disabled={loadingPlan === plan.key}
-                  >
-                    {loadingPlan === plan.key ? "Loading…" : `Choose ${plan.name}`}
-                  </button>
-                </div>
-              );
-            })}
-            {plans.length === 0 && (
-              <p style={{ color: "var(--chalk-dim)", gridColumn: "1 / -1", textAlign: "center" }}>
-                Couldn't load plans — make sure the backend is running and seeded (<code className="mono">npm run seed</code>).
-              </p>
-            )}
-          </div>
+                ))}
+              </div>
+              <p className="skeleton-loading-note">Loading membership plans…</p>
+            </>
+          )}
+
+          {!loading && loadError && (
+            <p style={{ color: "var(--chalk-dim)", textAlign: "center" }}>
+              Couldn't reach the server right now — this can happen on the very first visit in a while.
+              Try refreshing in a few seconds.
+            </p>
+          )}
+
+          {!loading && !loadError && (
+            <div className="tiers-grid">
+              {plans.map((plan) => {
+                const meta = tierMeta[plan.key] || {};
+                return (
+                  <div className={`tier-card ${meta.featured ? "featured" : ""}`} key={plan.key}>
+                    {meta.featured && <div className="featured-badge mono">MOST LOADED</div>}
+                    <div className={`plate ${meta.plateSize || "small"}`} />
+                    <div className="tier-name">{plan.name?.toUpperCase()}</div>
+                    <div className="tier-desc">{plan.description}</div>
+                    <div className="tier-price mono">
+                      ₹{plan.price}
+                      <span>/{plan.period}</span>
+                    </div>
+                    <ul className="tier-features">
+                      {plan.features?.map((f) => (
+                        <li key={f}>{f}</li>
+                      ))}
+                    </ul>
+                    <button
+                      className={`btn btn-block ${meta.featured ? "btn-primary" : "btn-ghost"}`}
+                      onClick={() => handleChoose(plan)}
+                      disabled={loadingPlan === plan.key}
+                    >
+                      {loadingPlan === plan.key ? "Loading…" : `Choose ${plan.name}`}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
 
