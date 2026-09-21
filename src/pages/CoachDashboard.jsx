@@ -22,6 +22,15 @@ export default function CoachDashboard() {
   const [assigning, setAssigning] = useState(false);
   const [assignMsg, setAssignMsg] = useState("");
 
+  // AI generator form
+  const [showAiForm, setShowAiForm] = useState(false);
+  const [aiGoal, setAiGoal] = useState("");
+  const [aiExperience, setAiExperience] = useState("intermediate");
+  const [aiMaxes, setAiMaxes] = useState("");
+  const [aiDays, setAiDays] = useState("4");
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiError, setAiError] = useState("");
+
   const loadClients = () => {
     api
       .get("/users/clients")
@@ -52,13 +61,9 @@ export default function CoachDashboard() {
   const removeRow = (i) => setRows((prev) => (prev.length === 1 ? prev : prev.filter((_, idx) => idx !== i)));
   const clearGrid = () => setRows(emptyGrid());
 
-  // Paste-from-Excel / Google Sheets support. When you copy a block of cells
-  // and paste into any input in the grid, this spreads the pasted values
-  // across rows/columns starting from wherever you pasted, growing the grid
-  // if needed — same behavior as pasting into an actual spreadsheet.
   const handlePaste = (e, rowIdx, colIdx) => {
     const text = e.clipboardData.getData("text");
-    if (!text.includes("\t") && !text.includes("\n")) return; // single value — let normal paste happen
+    if (!text.includes("\t") && !text.includes("\n")) return;
 
     e.preventDefault();
     const lines = text.replace(/\r/g, "").split("\n").filter((line, i, arr) => !(i === arr.length - 1 && line === ""));
@@ -78,6 +83,30 @@ export default function CoachDashboard() {
       });
       return next;
     });
+  };
+
+  const handleGenerateWithAi = async () => {
+    if (!aiGoal.trim() || !aiDays) {
+      setAiError("Fill in at least the goal and days per week.");
+      return;
+    }
+    setAiGenerating(true);
+    setAiError("");
+    try {
+      const { data } = await api.post("/ai/generate-program", {
+        goal: aiGoal,
+        experienceLevel: aiExperience,
+        currentMaxes: aiMaxes,
+        daysPerWeek: aiDays,
+      });
+      // Pre-fill the grid with the AI draft — coach reviews/edits before assigning
+      setRows(data.rows.length ? data.rows.map((r) => ({ ...emptyRow(), ...r })) : emptyGrid());
+      setShowAiForm(false);
+    } catch (err) {
+      setAiError(err.response?.data?.message || "Couldn't generate a draft right now. Try again.");
+    } finally {
+      setAiGenerating(false);
+    }
   };
 
   const handleAssign = async () => {
@@ -156,6 +185,23 @@ export default function CoachDashboard() {
         .grid-toolbar .field { margin: 0; min-width: 220px; }
         .grid-actions { display: flex; gap: 8px; }
 
+        .ai-generate-btn {
+          background: linear-gradient(135deg, var(--blood), #8f1a13);
+          color: var(--chalk); border: none; border-radius: 4px;
+          padding: 9px 16px; font-size: 13px; font-weight: 600; cursor: pointer;
+          display: inline-flex; align-items: center; gap: 6px;
+        }
+        .ai-generate-btn:hover { filter: brightness(1.1); }
+        .ai-form {
+          background: var(--panel-2); border: 1px solid var(--blood); border-radius: 6px;
+          padding: 20px; margin-bottom: 20px;
+        }
+        .ai-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+        .ai-form-grid .field { margin: 0; }
+        .ai-form-actions { display: flex; gap: 10px; }
+        .ai-error { color: var(--blood-bright); font-size: 13px; margin-top: 10px; }
+        .ai-form-note { font-size: 11px; color: var(--chalk-dim); margin-top: -6px; margin-bottom: 14px; }
+
         .sheet-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 4px; margin-bottom: 16px; }
         .sheet { border-collapse: collapse; width: 100%; min-width: 720px; }
         .sheet th {
@@ -179,6 +225,7 @@ export default function CoachDashboard() {
         .assign-msg { font-size: 13px; color: var(--blood-bright); margin: 10px 0; }
 
         @media (max-width: 1100px) { .dash-grid { grid-template-columns: 1fr; } .side-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 600px) { .ai-form-grid { grid-template-columns: 1fr; } }
       `}</style>
 
       <Navbar />
@@ -219,10 +266,65 @@ export default function CoachDashboard() {
                     />
                   </div>
                   <div className="grid-actions">
+                    <button className="ai-generate-btn" type="button" onClick={() => setShowAiForm((v) => !v)}>
+                      ✨ Generate Draft with AI
+                    </button>
                     <button className="btn btn-ghost btn-sm" type="button" onClick={addRow}>+ Add Row</button>
                     <button className="btn btn-ghost btn-sm" type="button" onClick={clearGrid}>Clear Grid</button>
                   </div>
                 </div>
+
+                {showAiForm && (
+                  <div className="ai-form">
+                    <div className="ai-form-grid">
+                      <div className="field">
+                        <label>Goal</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. First meet in 6 months"
+                          value={aiGoal}
+                          onChange={(e) => setAiGoal(e.target.value)}
+                        />
+                      </div>
+                      <div className="field">
+                        <label>Experience Level</label>
+                        <select value={aiExperience} onChange={(e) => setAiExperience(e.target.value)}>
+                          <option value="beginner">Beginner</option>
+                          <option value="intermediate">Intermediate</option>
+                          <option value="advanced">Advanced</option>
+                        </select>
+                      </div>
+                      <div className="field">
+                        <label>Current Maxes (optional)</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Squat 140kg, Bench 90kg, Deadlift 170kg"
+                          value={aiMaxes}
+                          onChange={(e) => setAiMaxes(e.target.value)}
+                        />
+                      </div>
+                      <div className="field">
+                        <label>Days Per Week</label>
+                        <select value={aiDays} onChange={(e) => setAiDays(e.target.value)}>
+                          <option value="3">3</option>
+                          <option value="4">4</option>
+                          <option value="5">5</option>
+                          <option value="6">6</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="ai-form-note">
+                      This pre-fills the grid below — nothing is assigned yet. Review and edit before clicking Assign.
+                    </div>
+                    {aiError && <div className="ai-error">{aiError}</div>}
+                    <div className="ai-form-actions">
+                      <button className="btn btn-primary btn-sm" onClick={handleGenerateWithAi} disabled={aiGenerating}>
+                        {aiGenerating ? "Generating… (10-20s)" : "Generate"}
+                      </button>
+                      <button className="btn btn-ghost btn-sm" onClick={() => setShowAiForm(false)}>Cancel</button>
+                    </div>
+                  </div>
+                )}
 
                 <div className="sheet-hint">
                   Tip: you can copy a block of cells straight from Excel or Google Sheets and paste it into any cell here — it'll fill across rows and columns automatically.

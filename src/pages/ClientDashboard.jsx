@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import Navbar from "../components/Navbar.jsx";
 import Footer from "../components/Footer.jsx";
 import ChatWidget from "../components/ChatWidget.jsx";
+import AskCoachBot from "../components/AskCoachBot.jsx";
 import api from "../lib/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 
@@ -95,6 +96,11 @@ export default function ClientDashboard() {
         .dash-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 24px; align-items: start; }
         .card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 26px; }
         .card h2 { font-family: 'Anton', sans-serif; text-transform: uppercase; font-size: 18px; margin: 0 0 20px; letter-spacing: 0.02em; }
+        .card h2 .ai-badge {
+          font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.05em;
+          background: var(--blood); color: var(--chalk); padding: 2px 7px; border-radius: 10px;
+          vertical-align: middle; margin-left: 8px; text-transform: none;
+        }
         .empty-state { color: var(--chalk-dim); font-size: 14px; }
 
         .sheet-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 4px; }
@@ -127,6 +133,10 @@ export default function ClientDashboard() {
         .status-badge { font-size: 11px; padding: 3px 9px; border-radius: 20px; font-family: 'JetBrains Mono', monospace; }
         .status-badge.reviewed { background: rgba(76,175,80,0.15); color: #6fd37a; }
         .status-badge.pending { background: rgba(232,185,35,0.15); color: var(--tape); }
+
+        .side-stack { display: flex; flex-direction: column; gap: 24px; }
+        .side-stack .card { padding: 0; overflow: hidden; height: 460px; display: flex; flex-direction: column; }
+        .side-stack .card h2 { padding: 26px 26px 0; margin-bottom: 14px; }
 
         @media (max-width: 900px) { .dash-grid { grid-template-columns: 1fr; } .upload-fields { grid-template-columns: 1fr; } }
       `}</style>
@@ -238,12 +248,16 @@ export default function ClientDashboard() {
             </div>
           </div>
 
-          {/* CHAT */}
-          <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-            <div style={{ padding: "26px 26px 0" }}>
+          {/* CHAT + AI ASSISTANT */}
+          <div className="side-stack">
+            <div className="card">
               <h2>Chat with Coach</h2>
+              <ChatWidget otherUserId={coach?._id} otherUserName={coach?.name || "Coach"} />
             </div>
-            <ChatWidget otherUserId={coach?._id} otherUserName={coach?.name || "Coach"} />
+            <div className="card">
+              <h2>Ask a Lift Question<span className="ai-badge mono">AI</span></h2>
+              <AskCoachBot />
+            </div>
           </div>
         </div>
       </div>
