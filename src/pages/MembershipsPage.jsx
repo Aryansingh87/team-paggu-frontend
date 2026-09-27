@@ -5,33 +5,39 @@ import Footer from "../components/Footer.jsx";
 import api from "../lib/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 
-const tierMeta = {
-  STARTER: { plateSize: "small" },
-  COMPETITOR: { plateSize: "medium", featured: true },
-  ELITE: { plateSize: "large" },
-};
+const categories = [
+  { key: "POWERLIFTING", label: "Powerlifting" },
+  { key: "MUSCLE_BUILDING", label: "Muscle Building" },
+  { key: "FAT_LOSS", label: "Fat Loss" },
+  { key: "BODY_TRANSFORMATION", label: "Body Transformation" },
+];
+
+// Cosmetic-only plate sizing per tier position within a category — not tied
+// to price directly, just visual weight for 1st/2nd/3rd tier shown.
+const plateSizeByIndex = ["small", "medium", "large"];
 
 const faqs = [
   {
     q: "How does payment work?",
-    a: "Memberships renew monthly and are billed through Razorpay. You can cancel anytime — no lock-in.",
+    a: "Memberships are billed through Razorpay for the duration shown on the plan. You can cancel anytime — see our Refund Policy for details.",
   },
   {
-    q: "Can I switch plans later?",
-    a: "Yes. Upgrade or downgrade anytime from your dashboard; the new plan applies from your next billing cycle.",
+    q: "Can I switch plans or categories later?",
+    a: "Yes. You can move between any category or tier from your dashboard — the new plan applies from your next billing cycle.",
   },
   {
-    q: "What if I miss a form check?",
-    a: "No penalty — just upload when you can. Your coach reviews whatever's in the queue during their next check-in window.",
+    q: "Can I combine categories, like Powerlifting and Fat Loss?",
+    a: "Each membership is its own coaching track. If you want a blend, message your coach directly to discuss a custom approach.",
   },
   {
-    q: "Do I need to be a competitive lifter?",
-    a: "No. Starter and Competitor both work well for lifters with no meet booked — programming still follows the same principles.",
+    q: "What if I miss a check-in?",
+    a: "No penalty — just check in when you can. Your coach reviews whatever's in the queue during their next check-in window.",
   },
 ];
 
 export default function MembershipsPage() {
-  const [plans, setPlans] = useState([]);
+  const [allPlans, setAllPlans] = useState([]);
+  const [activeCategory, setActiveCategory] = useState("POWERLIFTING");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [loadingPlan, setLoadingPlan] = useState(null);
@@ -44,10 +50,12 @@ export default function MembershipsPage() {
     setLoadError(false);
     api
       .get("/memberships")
-      .then(({ data }) => setPlans(data.plans))
+      .then(({ data }) => setAllPlans(data.plans))
       .catch(() => setLoadError(true))
       .finally(() => setLoading(false));
   }, []);
+
+  const plansInView = allPlans.filter((p) => p.category === activeCategory);
 
   const handleChoose = async (plan) => {
     setPayError("");
@@ -101,10 +109,24 @@ export default function MembershipsPage() {
   return (
     <div className="pf-root">
       <style>{`
-        .mem-hero { padding: 70px 0 50px; text-align: center; border-bottom: 1px solid var(--line); }
+        .mem-hero { padding: 70px 0 40px; text-align: center; border-bottom: 1px solid var(--line); }
         .mem-hero p { color: var(--chalk-dim); max-width: 520px; margin: 16px auto 0; font-size: 16px; line-height: 1.6; }
 
+        .category-tabs {
+          display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;
+          padding: 24px 0 0;
+        }
+        .category-tab {
+          font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.05em;
+          background: var(--panel); border: 1px solid var(--line); color: var(--chalk-dim);
+          padding: 9px 18px; border-radius: 30px; cursor: pointer; transition: all .15s;
+        }
+        .category-tab:hover { border-color: var(--steel); color: var(--chalk); }
+        .category-tab.active { background: var(--blood); border-color: var(--blood); color: var(--chalk); }
+
         .tiers-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; align-items: end; }
+        .tiers-grid.cols-1 { grid-template-columns: minmax(280px, 380px); justify-content: center; }
+        .tiers-grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 340px)); justify-content: center; }
         .tier-card {
           background: var(--panel); border: 1px solid var(--line); border-radius: 4px;
           padding: 30px 26px; display: flex; flex-direction: column;
@@ -127,7 +149,6 @@ export default function MembershipsPage() {
 
         .pay-error { max-width: 760px; margin: 0 auto 24px; background: rgba(196,36,27,0.12); border: 1px solid var(--blood); color: var(--chalk); font-size: 13px; padding: 12px 16px; border-radius: 4px; text-align: center; }
 
-        /* SKELETON LOADING STATE */
         .skeleton-card { background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 30px 26px; }
         .skeleton-block { background: var(--panel-2); border-radius: 3px; animation: pulse 1.4s ease-in-out infinite; }
         @keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
@@ -144,7 +165,7 @@ export default function MembershipsPage() {
         .faq-item p { margin: 0; color: var(--chalk-dim); font-size: 14px; line-height: 1.6; }
 
         @media (max-width: 900px) {
-          .tiers-grid { grid-template-columns: 1fr; }
+          .tiers-grid, .tiers-grid.cols-1, .tiers-grid.cols-2 { grid-template-columns: 1fr; }
           .tier-card.featured { transform: none; }
         }
       `}</style>
@@ -154,8 +175,19 @@ export default function MembershipsPage() {
       <header className="mem-hero">
         <div className="wrap">
           <span className="eyebrow">Load the bar</span>
-          <h1 className="display" style={{ fontSize: "clamp(34px, 5vw, 56px)" }}>Pick your plates.</h1>
-          <p>Every tier gets real programming from a real coach. Heavier tiers mean tighter feedback loops.</p>
+          <h1 className="display" style={{ fontSize: "clamp(34px, 5vw, 56px)" }}>Pick your track.</h1>
+          <p>Every tier gets real programming from a real coach. Pick the category that matches your goal.</p>
+        </div>
+        <div className="category-tabs">
+          {categories.map((c) => (
+            <button
+              key={c.key}
+              className={`category-tab ${activeCategory === c.key ? "active" : ""}`}
+              onClick={() => setActiveCategory(c.key)}
+            >
+              {c.label}
+            </button>
+          ))}
         </div>
       </header>
 
@@ -190,13 +222,13 @@ export default function MembershipsPage() {
           )}
 
           {!loading && !loadError && (
-            <div className="tiers-grid">
-              {plans.map((plan) => {
-                const meta = tierMeta[plan.key] || {};
+            <div className={`tiers-grid ${plansInView.length === 1 ? "cols-1" : plansInView.length === 2 ? "cols-2" : ""}`}>
+              {plansInView.map((plan, i) => {
+                const featured = plansInView.length > 1 && i === Math.min(1, plansInView.length - 1) && plansInView.length > 2;
                 return (
-                  <div className={`tier-card ${meta.featured ? "featured" : ""}`} key={plan.key}>
-                    {meta.featured && <div className="featured-badge mono">MOST LOADED</div>}
-                    <div className={`plate ${meta.plateSize || "small"}`} />
+                  <div className={`tier-card ${featured ? "featured" : ""}`} key={plan.key}>
+                    {featured && <div className="featured-badge mono">MOST LOADED</div>}
+                    <div className={`plate ${plateSizeByIndex[i] || "small"}`} />
                     <div className="tier-name">{plan.name?.toUpperCase()}</div>
                     <div className="tier-desc">{plan.description}</div>
                     <div className="tier-price mono">
@@ -209,7 +241,7 @@ export default function MembershipsPage() {
                       ))}
                     </ul>
                     <button
-                      className={`btn btn-block ${meta.featured ? "btn-primary" : "btn-ghost"}`}
+                      className={`btn btn-block ${featured ? "btn-primary" : "btn-ghost"}`}
                       onClick={() => handleChoose(plan)}
                       disabled={loadingPlan === plan.key}
                     >
@@ -218,6 +250,11 @@ export default function MembershipsPage() {
                   </div>
                 );
               })}
+              {plansInView.length === 0 && (
+                <p style={{ color: "var(--chalk-dim)", textAlign: "center", gridColumn: "1 / -1" }}>
+                  No plans in this category yet.
+                </p>
+              )}
             </div>
           )}
         </div>
